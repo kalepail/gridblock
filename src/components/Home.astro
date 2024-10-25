@@ -1,5 +1,5 @@
 <script>
-  const gridSize = 1000;
+  const gridSize = 1280;
   const cellSize = 2;
   const canvasSize = gridSize * cellSize;
 
@@ -11,6 +11,7 @@
   interface Snake {
     head: SnakeSegment;
     color: string;
+    health: number;
   }
 
   let snakes: Snake[] = [];
@@ -22,7 +23,8 @@
     { dx: 0, dy: -1 },
   ];
 
-  const snakeCount = 1000;
+  const snakeCount = 2000;
+  const initialHealth = 100;
 
   function fillSquare(context: CanvasRenderingContext2D, x: number, y: number, color: string): void {
     context.fillStyle = color;
@@ -42,9 +44,14 @@
       console.error("Unable to get 2D context");
     } else {
       initializeSnakes();
+
       requestAnimationFrame(function animate() {
-        moveSnakes(context);
-        requestAnimationFrame(animate);
+        if (snakes.length) {
+          moveSnakes(context);
+          requestAnimationFrame(animate);
+        } else {
+          alert("All snakes died");
+        }
       });
     }
   }
@@ -56,17 +63,18 @@
       const startX = Math.floor(Math.random() * gridSize);
       const startY = Math.floor(Math.random() * gridSize);
       const head = { x: startX, y: startY };
-      const color = getRandomColor();
-      snakes.push({ head, color });
+      const color = getRandomColor(); // getQuadrantColor(startX, startY);
+      snakes.push({ head, color, health: initialHealth });
     }
   }
 
   function moveSnakes(context: CanvasRenderingContext2D): void {
-    snakes.forEach((snake) => {
-      let newHead: SnakeSegment;
-      let attempts = 0;
-      const maxAttempts = 4; // Maximum number of attempts to find a valid move
+    const maxAttempts = 4; // Maximum number of attempts to find a valid move
 
+    snakes = snakes.filter((snake) => {
+      let attempts = 0;
+      let newHead: SnakeSegment;
+      
       do {
         let newDirection = Math.floor(Math.random() * 4);
 
@@ -92,8 +100,23 @@
         newHead = { ...snake.head };
       }
 
+      // Check if the new position has a different color
+      const imageData = context.getImageData(newHead.x * cellSize, newHead.y * cellSize, 1, 1);
+      const pixelColor = `rgb(${imageData.data[0]}, ${imageData.data[1]}, ${imageData.data[2]})`;
+      
+      if (pixelColor !== snake.color && pixelColor !== 'rgb(0, 0, 0)') {
+        // Snake loses health if it hits a different color
+        snake.health--;
+        if (snake.health <= 0) {
+          // Snake dies if health reaches 0
+          return false;
+        }
+      }
+
       snake.head = newHead;
       fillSquare(context, newHead.x, newHead.y, snake.color);
+      updateSnakeCount();
+      return true;
     });
   }
 
@@ -107,13 +130,45 @@
   }
 
   function getRandomColor(): string {
+    // const colors = [
+    //   'rgb(255, 0, 0)',   // Red (primary)
+    //   'rgb(0, 255, 0)',   // Green (primary)
+    //   'rgb(0, 0, 255)',   // Blue (primary)
+    //   'rgb(255, 255, 0)', // Yellow (primary)
+    //   'rgb(255, 0, 255)', // Magenta (tertiary)
+    //   'rgb(0, 255, 255)', // Cyan (tertiary)
+    // ];
+    // return colors[Math.floor(Math.random() * colors.length)];
     const r = Math.floor(Math.random() * 256);
     const g = Math.floor(Math.random() * 256);
     const b = Math.floor(Math.random() * 256);
-    return `rgb(${r},${g},${b})`;
+    return `rgb(${r}, ${g}, ${b})`;
+  }
+
+  function getQuadrantColor(x: number, y: number): string {
+    const colors = [
+      'rgb(255, 0, 0)',   // Red (primary)
+      'rgb(0, 255, 0)',   // Green (primary)
+      'rgb(0, 0, 255)',   // Blue (primary)
+      'rgb(255, 255, 0)', // Yellow (primary)
+    ];
+    
+    const quadrant = (x < gridSize / 2 ? 0 : 1) + (y < gridSize / 2 ? 0 : 2);
+    
+    // 80% chance to use the quadrant color, 20% chance for a random color
+    return Math.random() < 0.8 ? colors[quadrant] : getRandomColor();
+  }
+
+  function updateSnakeCount() {
+    const countElement = document.getElementById('snakeCount');
+    
+    if (countElement) {
+      countElement.textContent = `Snakes alive: ${snakes.length}`;
+    }
   }
 </script>
 
 <body>
   <canvas id="myCanvas"></canvas>
+  <div id="snakeCount" style="position: fixed; bottom: 10px; left: 10px; color: black; background-color: white; padding: 5px; border-radius: 5px; font-family: Arial, sans-serif; z-index: 1000;"></div>
 </body>
