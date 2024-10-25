@@ -22,7 +22,7 @@
     { dx: 0, dy: -1 },
   ];
 
-  const snakeCount = 100;
+  const snakeCount = 1000;
 
   function fillSquare(context: CanvasRenderingContext2D, x: number, y: number, color: string): void {
     context.fillStyle = color;
@@ -41,7 +41,7 @@
     if (!context) {
       console.error("Unable to get 2D context");
     } else {
-      initializeSnakes(context);
+      initializeSnakes();
       requestAnimationFrame(function animate() {
         moveSnakes(context);
         requestAnimationFrame(animate);
@@ -49,42 +49,49 @@
     }
   }
 
-  function initializeSnakes(context: CanvasRenderingContext2D): void {
+  function initializeSnakes(): void {
     snakes = [];
 
     for (let i = 0; i < snakeCount; i++) {
       const startX = Math.floor(Math.random() * gridSize);
       const startY = Math.floor(Math.random() * gridSize);
-      const color = getRandomColor();
       const head = { x: startX, y: startY };
+      const color = getRandomColor();
       snakes.push({ head, color });
-      fillSquare(context, startX, startY, color);
     }
   }
 
   function moveSnakes(context: CanvasRenderingContext2D): void {
     snakes.forEach((snake) => {
-      let newDirection = Math.floor(Math.random() * 4);
+      let newHead: SnakeSegment;
+      let attempts = 0;
+      const maxAttempts = 4; // Maximum number of attempts to find a valid move
 
-      if (Math.random() < 0.2 || isAtEdge(snake.head)) {
-        newDirection = (newDirection + Math.floor(Math.random() * 3) + 1) % 4;
+      do {
+        let newDirection = Math.floor(Math.random() * 4);
+
+        // Increase chance of changing direction at edges or randomly
+        if (Math.random() < 0.2 || isAtEdge(snake.head)) {
+          newDirection = (newDirection + 1 + Math.floor(Math.random() * 3)) % 4;
+        }
+
+        newHead = {
+          x: snake.head.x + directions[newDirection].dx,
+          y: snake.head.y + directions[newDirection].dy,
+        };
+
+        attempts++;
+      } while (
+        (newHead.x < 0 || newHead.x >= gridSize || newHead.y < 0 || newHead.y >= gridSize || 
+        (newHead.x === snake.head.x && newHead.y === snake.head.y)) && 
+        attempts < maxAttempts
+      );
+
+      // If we couldn't find a valid move after max attempts, keep the snake in place
+      if (attempts === maxAttempts) {
+        newHead = { ...snake.head };
       }
 
-      const newHead = {
-        x: snake.head.x + directions[newDirection].dx,
-        y: snake.head.y + directions[newDirection].dy,
-      };
-
-      if (newHead.x < 0 || newHead.x >= gridSize || newHead.y < 0 || newHead.y >= gridSize) {
-        newDirection = (newDirection + 2) % 4;
-        newHead.x = snake.head.x + directions[newDirection].dx;
-        newHead.y = snake.head.y + directions[newDirection].dy;
-      }
-
-      // Clear the previous head position
-      fillSquare(context, snake.head.x, snake.head.y, snake.color);
-
-      // Update the snake's head
       snake.head = newHead;
       fillSquare(context, newHead.x, newHead.y, snake.color);
     });
