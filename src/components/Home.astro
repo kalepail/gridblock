@@ -1,0 +1,112 @@
+<script>
+  const gridSize = 1000;
+  const cellSize = 2;
+  const canvasSize = gridSize * cellSize;
+
+  interface SnakeSegment {
+    x: number;
+    y: number;
+  }
+
+  interface Snake {
+    head: SnakeSegment;
+    color: string;
+  }
+
+  let snakes: Snake[] = [];
+
+  const directions = [
+    { dx: 1, dy: 0 },
+    { dx: -1, dy: 0 },
+    { dx: 0, dy: 1 },
+    { dx: 0, dy: -1 },
+  ];
+
+  const snakeCount = 100;
+
+  function fillSquare(context: CanvasRenderingContext2D, x: number, y: number, color: string): void {
+    context.fillStyle = color;
+    context.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+  }
+
+  const canvas = document.getElementById("myCanvas") as HTMLCanvasElement;
+  if (!canvas) {
+    console.error("Canvas element not found");
+  } else {
+    canvas.width = canvasSize;
+    canvas.height = canvasSize;
+
+    const context = canvas.getContext("2d");
+
+    if (!context) {
+      console.error("Unable to get 2D context");
+    } else {
+      initializeSnakes(context);
+      requestAnimationFrame(function animate() {
+        moveSnakes(context);
+        requestAnimationFrame(animate);
+      });
+    }
+  }
+
+  function initializeSnakes(context: CanvasRenderingContext2D): void {
+    snakes = [];
+
+    for (let i = 0; i < snakeCount; i++) {
+      const startX = Math.floor(Math.random() * gridSize);
+      const startY = Math.floor(Math.random() * gridSize);
+      const color = getRandomColor();
+      const head = { x: startX, y: startY };
+      snakes.push({ head, color });
+      fillSquare(context, startX, startY, color);
+    }
+  }
+
+  function moveSnakes(context: CanvasRenderingContext2D): void {
+    snakes.forEach((snake) => {
+      let newDirection = Math.floor(Math.random() * 4);
+
+      if (Math.random() < 0.2 || isAtEdge(snake.head)) {
+        newDirection = (newDirection + Math.floor(Math.random() * 3) + 1) % 4;
+      }
+
+      const newHead = {
+        x: snake.head.x + directions[newDirection].dx,
+        y: snake.head.y + directions[newDirection].dy,
+      };
+
+      if (newHead.x < 0 || newHead.x >= gridSize || newHead.y < 0 || newHead.y >= gridSize) {
+        newDirection = (newDirection + 2) % 4;
+        newHead.x = snake.head.x + directions[newDirection].dx;
+        newHead.y = snake.head.y + directions[newDirection].dy;
+      }
+
+      // Clear the previous head position
+      fillSquare(context, snake.head.x, snake.head.y, snake.color);
+
+      // Update the snake's head
+      snake.head = newHead;
+      fillSquare(context, newHead.x, newHead.y, snake.color);
+    });
+  }
+
+  function isAtEdge(segment: SnakeSegment): boolean {
+    return (
+      segment.x <= 0 ||
+      segment.x >= gridSize - 1 ||
+      segment.y <= 0 ||
+      segment.y >= gridSize - 1
+    );
+  }
+
+  function getRandomColor(): string {
+    const r = Math.floor(Math.random() * 256);
+    const g = Math.floor(Math.random() * 256);
+    const b = Math.floor(Math.random() * 256);
+    return `rgb(${r},${g},${b})`;
+  }
+</script>
+
+<body>
+  <canvas id="myCanvas"></canvas>
+</body>
